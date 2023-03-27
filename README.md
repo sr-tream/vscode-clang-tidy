@@ -43,3 +43,6 @@ This extension contributes the following commands:
 ## Known Issues
 
 [See the Github issues](https://github.com/notskm/vscode-clang-tidy/issues)
+
+## CS 128 Usage
+Forked from [notskm/vscode-clang-tidy](https://github.com/notskm/vscode-clang-tidy) due to repository being archived and extension being taken off VS Code Marketplace.
