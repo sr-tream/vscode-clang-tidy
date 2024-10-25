@@ -119,7 +119,7 @@ export function runClangTidy(
                     execFile(
                         clangTidy,
                         args,
-                        { cwd: workingDirectory },
+                        { cwd: workingDirectory, maxBuffer: 10 * 1024 * 1024 },
                         (error, stdout, stderr) => {
                             loggingChannel.appendLine(stdout);
                             loggingChannel.appendLine(stderr);
