@@ -1,11 +1,11 @@
 {
     "name": "clang-tidy",
-    "displayName": "Clang-Tidy",
+    "displayName": "Clang-Tidy (fork)",
     "description": "Integrates clang-tidy into VS Code",
     "version": "0.5.1",
-    "publisher": "notskm",
+    "publisher": "sr-tream",
     "repository": {
-        "url": "https://github.com/notskm/vscode-clang-tidy"
+        "url": "https://github.com/sr-tream/vscode-clang-tidy"
     },
     "icon": "images/Dragon256.png",
     "galleryBanner": {

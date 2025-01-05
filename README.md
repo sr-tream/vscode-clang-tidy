@@ -1,11 +1,17 @@
 # Clang-Tidy for VSCode
 
-[![Build Status](https://img.shields.io/github/workflow/status/notskm/vscode-clang-tidy/CI)](https://github.com/notskm/vscode-clang-tidy/actions?query=workflow%3ACI)
 [![code style: prettier](https://img.shields.io/badge/code_style-prettier-ff69b4.svg)](https://github.com/prettier/prettier)
 
 This extension integrates [clang-tidy](https://clang.llvm.org/extra/clang-tidy/) into VS Code.
 
 [Clang-Tidy documentation can be found here.](https://clang.llvm.org/extra/clang-tidy/)
+
+## Fork changes
+
+- Fix work on big files, like 10k lines
+- Fix quick-actions with insertions around original text
+- Unpublish diagnostics, when overlapped code edited
+- Save file after quick-actions (workaround for editing invalid position in followed quick-actions)
 
 ## Features
 
