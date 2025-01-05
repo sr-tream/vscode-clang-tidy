@@ -80,6 +80,7 @@
                     "enum": [
                         "Notification",
                         "Window",
+                        "Status Bar",
                         "Disabled"
                     ],
                     "default": "Notification",

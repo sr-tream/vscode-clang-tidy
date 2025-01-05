@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 -   Cross-file Quick Fixes for opened files
 -   Show diagnostic name
+-   Statusbar item for progress indication
 
 ## [0.6.0] - 2025-01-05
 

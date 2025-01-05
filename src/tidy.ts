@@ -68,6 +68,37 @@ class ChildProcessWithExitFlag {
 }
 
 let clangTidyProcess: ChildProcessWithExitFlag | undefined = undefined;
+let statusBarItem: vscode.StatusBarItem | undefined = undefined;
+
+enum StatusBarState {
+    Hidden,
+    Idle,
+    Linting,
+    LintAndFix,
+};
+
+function updateStatusBar(state: StatusBarState) {
+    if (statusBarItem === undefined) {
+        statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
+        statusBarItem.command = "clang-tidy.lintFile";
+        statusBarItem.tooltip = "Lint File";
+    }
+    switch (state) {
+        case StatusBarState.Hidden:
+            statusBarItem.hide();
+            return;
+        case StatusBarState.Idle:
+            statusBarItem.text = "Clang-Tidy: Idle";
+            break;
+        case StatusBarState.Linting:
+            statusBarItem.text = "Clang-Tidy: Linting current file...";
+            break;
+        case StatusBarState.LintAndFix:
+            statusBarItem.text = "Clang-Tidy: Linting and fixing current file (do not modify it in the meanwhile)...";
+            break;
+    }
+    statusBarItem.show();
+}
 
 export function killClangTidy() {
     if (
@@ -97,9 +128,18 @@ export function runClangTidy(
 ): Thenable<string> {
     killClangTidy();
 
-    const progressMessage = fixErrors
-        ? "Linting and fixing current file (do not modify it in the meanwhile)..."
-        : "Linting current file...";
+    enum ProgressLocation {
+        Notification = "Notification",
+        Window = "Window",
+        StatusBar = "Status Bar",
+        Disabled = "Disabled",
+    };
+    const progressBarLocation = vscode.workspace
+        .getConfiguration("clang-tidy")
+        .get("progressBarLocation") as ProgressLocation;
+
+    if (progressBarLocation === ProgressLocation.StatusBar)
+        updateStatusBar(fixErrors ? StatusBarState.LintAndFix : StatusBarState.Linting);
 
     const clangTidyResult = new Promise<string>((resolve) => {
         const clangTidy = clangTidyExecutable();
@@ -118,22 +158,14 @@ export function runClangTidy(
                 (error, stdout, stderr) => {
                     loggingChannel.appendLine(stdout);
                     loggingChannel.appendLine(stderr);
+                    updateStatusBar(progressBarLocation === ProgressLocation.StatusBar ? StatusBarState.Idle : StatusBarState.Hidden);
                     resolve(stdout);
                 }
             )
         );
     });
 
-    enum ProgressLocation {
-        Notification = "Notification",
-        Window = "Window",
-        Disabled = "Disabled",
-    };
-    const progressBarLocation = vscode.workspace
-        .getConfiguration("clang-tidy")
-        .get("progressBarLocation") as ProgressLocation;
-
-    if (progressBarLocation === ProgressLocation.Disabled) {
+    if (progressBarLocation === ProgressLocation.StatusBar || progressBarLocation === ProgressLocation.Disabled) {
         return clangTidyResult;
     }
 
@@ -147,6 +179,10 @@ export function runClangTidy(
                 return vscode.ProgressLocation.Notification;
         }
     })();
+
+    const progressMessage = fixErrors
+        ? "Linting and fixing current file (do not modify it in the meanwhile)..."
+        : "Linting current file...";
 
     return vscode.window.withProgress(
         { location: vscodeProgressBarLocation },
