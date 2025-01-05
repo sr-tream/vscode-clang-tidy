@@ -74,6 +74,16 @@
                     "type": "array",
                     "default": [],
                     "description": "A list of regular expressions matching files you don't want to lint."
+                },
+                "clang-tidy.progressBarLocation": {
+                    "type": "string",
+                    "enum": [
+                        "Notification",
+                        "Window",
+                        "Disabled"
+                    ],
+                    "default": "Notification",
+                    "description": "Location of the progress bar"
                 }
             }
         }

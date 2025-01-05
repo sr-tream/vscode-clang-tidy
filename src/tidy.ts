@@ -101,33 +101,59 @@ export function runClangTidy(
         ? "Linting and fixing current file (do not modify it in the meanwhile)..."
         : "Linting current file...";
 
+    const clangTidyResult = new Promise<string>((resolve) => {
+        const clangTidy = clangTidyExecutable();
+        const args = clangTidyArgs(files, fixErrors);
+
+        loggingChannel.appendLine(`> ${clangTidy} ${args.join(" ")}`);
+        loggingChannel.appendLine(
+            `Working Directory: ${workingDirectory}`
+        );
+
+        clangTidyProcess = new ChildProcessWithExitFlag(
+            execFile(
+                clangTidy,
+                args,
+                { cwd: workingDirectory, maxBuffer: 10 * 1024 * 1024 },
+                (error, stdout, stderr) => {
+                    loggingChannel.appendLine(stdout);
+                    loggingChannel.appendLine(stderr);
+                    resolve(stdout);
+                }
+            )
+        );
+    });
+
+    enum ProgressLocation {
+        Notification = "Notification",
+        Window = "Window",
+        Disabled = "Disabled",
+    };
+    const progressBarLocation = vscode.workspace
+        .getConfiguration("clang-tidy")
+        .get("progressBarLocation") as ProgressLocation;
+
+    if (progressBarLocation === ProgressLocation.Disabled) {
+        return clangTidyResult;
+    }
+
+    const vscodeProgressBarLocation = (() => {
+        switch (progressBarLocation) {
+            case ProgressLocation.Notification:
+                return vscode.ProgressLocation.Notification;
+            case ProgressLocation.Window:
+                return vscode.ProgressLocation.Window;
+            default:
+                return vscode.ProgressLocation.Notification;
+        }
+    })();
+
     return vscode.window.withProgress(
-        { location: vscode.ProgressLocation.Notification },
+        { location: vscodeProgressBarLocation },
         (progress) => {
             progress.report({ message: progressMessage });
 
-            return new Promise<string>((resolve) => {
-                const clangTidy = clangTidyExecutable();
-                const args = clangTidyArgs(files, fixErrors);
-
-                loggingChannel.appendLine(`> ${clangTidy} ${args.join(" ")}`);
-                loggingChannel.appendLine(
-                    `Working Directory: ${workingDirectory}`
-                );
-
-                clangTidyProcess = new ChildProcessWithExitFlag(
-                    execFile(
-                        clangTidy,
-                        args,
-                        { cwd: workingDirectory, maxBuffer: 10 * 1024 * 1024 },
-                        (error, stdout, stderr) => {
-                            loggingChannel.appendLine(stdout);
-                            loggingChannel.appendLine(stderr);
-                            resolve(stdout);
-                        }
-                    )
-                );
-            });
+            return clangTidyResult;
         }
     );
 }

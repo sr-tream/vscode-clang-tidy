@@ -12,6 +12,7 @@ This extension integrates [clang-tidy](https://clang.llvm.org/extra/clang-tidy/)
 - Fix quick-actions with insertions around original text
 - Unpublish diagnostics, when overlapped code edited
 - Save file after quick-actions (workaround for editing invalid position in followed quick-actions)
+- Configurable progress bar location
 
 ## Features
 
