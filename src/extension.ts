@@ -114,7 +114,9 @@ export function activate(context: vscode.ExtensionContext) {
         })
     );
 
-    workspace.textDocuments.forEach((doc) => lintAndSetDiagnostics(doc));
+    setTimeout(() => {
+        workspace.textDocuments.forEach((doc) => lintAndSetDiagnostics(doc));
+    }, 1000);
 }
 
 /**
