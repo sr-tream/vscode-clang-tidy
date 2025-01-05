@@ -194,29 +194,24 @@ export class ClangTidyInfo implements vscode.CodeActionProvider {
     ): vscode.CodeAction | null {
         if (
             diagnostic.source !== "clang-tidy" ||
-            !diagnostic.code ||
-            typeof diagnostic.code !== "string"
+            !diagnostic.relatedInformation ||
+            diagnostic.relatedInformation.length !== 1
         ) {
             return null;
         }
-        const [text, offset, len, file] = JSON.parse(diagnostic.code) as [
-            string,
-            number,
-            number,
-            string | undefined
-        ];
-        const doc = file !== undefined ? findOpenedTextDocument(file) : document;
-        if (doc === undefined) return null;
+
+        const loc = diagnostic.relatedInformation[0].location;
+        const text = diagnostic.relatedInformation[0].message;
 
         const changes = new vscode.WorkspaceEdit();
         changes.replace(
-            doc.uri,
-            new vscode.Range(
-                doc.positionAt(offset),
-                doc.positionAt(offset + len)
-            ),
+            loc.uri,
+            loc.range,
             text
         );
+
+        let doc = findOpenedTextDocument(loc.uri.fsPath);
+        if (doc === undefined) doc = document;
         return {
             title: `[Clang-Tidy] Change to ${text}`,
             diagnostics: [diagnostic],

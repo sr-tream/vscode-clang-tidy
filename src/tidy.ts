@@ -264,12 +264,15 @@ function generateVScodeDiagnostics(
                 diagnosticMessage.Severity
             );
             // embed information needed for quickfix in code
-            diagnostic.code = JSON.stringify([
-                replacementText,
-                fixes[0].Offset,
-                replacementLength,
-                fixes[0].FilePath
-            ]);
+            let info: vscode.DiagnosticRelatedInformation = {
+                location: new vscode.Location(
+                    vscode.Uri.file(fixes[0].FilePath),
+                    new vscode.Range(beginPos, endPos)
+                ),
+                message: replacementText
+            };
+            diagnostic.relatedInformation = [info];
+            diagnostic.code = tidyDiagnostic.DiagnosticName;
             diagnostic.source = "clang-tidy";
             return [diagnostic];
         } else
@@ -294,12 +297,15 @@ function generateVScodeDiagnostics(
                     diagnosticMessage.Severity
                 );
                 // embed information needed for quickfix in code
-                diagnostic.code = JSON.stringify([
-                    replacement.ReplacementText,
-                    replacement.Offset,
-                    replacement.Length,
-                    replacement.FilePath
-                ]);
+                let info: vscode.DiagnosticRelatedInformation = {
+                    location: new vscode.Location(
+                        vscode.Uri.file(fixes[0].FilePath),
+                        new vscode.Range(beginPos, endPos)
+                    ),
+                    message: replacement.ReplacementText
+                };
+                diagnostic.relatedInformation = [info];
+                diagnostic.code = tidyDiagnostic.DiagnosticName;
                 diagnostic.source = "clang-tidy";
                 return diagnostic;
             });
@@ -310,6 +316,7 @@ function generateVScodeDiagnostics(
             diagnosticMessage.Message,
             diagnosticMessage.Severity
         );
+        diagnostic.code = tidyDiagnostic.DiagnosticName;
         diagnostic.source = "clang-tidy";
         return [diagnostic];
     }
