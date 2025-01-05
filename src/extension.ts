@@ -48,10 +48,19 @@ export function activate(context: vscode.ExtensionContext) {
     subscriptions.push(
         workspace.onDidSaveTextDocument((doc) => {
             if (workspace.getConfiguration("clang-tidy").get("lintOnSave")) {
-                const fixErrors = workspace
-                    .getConfiguration("clang-tidy")
-                    .get("fixOnSave") as boolean;
-                lintAndSetDiagnostics(doc, fixErrors);
+                if (
+                    doc.uri.scheme === "file" &&
+                    doc.uri.fsPath.endsWith(".clang-tidy")
+                ) {
+                    workspace.textDocuments.forEach((doc) =>
+                        lintAndSetDiagnostics(doc)
+                    );
+                } else {
+                    const fixErrors = workspace
+                        .getConfiguration("clang-tidy")
+                        .get("fixOnSave") as boolean;
+                    lintAndSetDiagnostics(doc, fixErrors);
+                }
             }
         })
     );
@@ -63,21 +72,6 @@ export function activate(context: vscode.ExtensionContext) {
     );
 
     subscriptions.push(workspace.onWillSaveTextDocument(killClangTidy));
-
-    subscriptions.push(
-        workspace.onDidSaveTextDocument((doc) => {
-            if (workspace.getConfiguration("clang-tidy").get("lintOnSave")) {
-                if (
-                    doc.uri.scheme === "file" &&
-                    doc.uri.fsPath.endsWith(".clang-tidy")
-                ) {
-                    workspace.textDocuments.forEach((doc) =>
-                        lintAndSetDiagnostics(doc)
-                    );
-                }
-            }
-        })
-    );
 
     subscriptions.push(
         workspace.onDidChangeConfiguration((config) => {
@@ -94,6 +88,30 @@ export function activate(context: vscode.ExtensionContext) {
             "clang-tidy.lintFile",
             lintActiveDocAndSetDiagnostics
         )
+    );
+
+    subscriptions.push(
+        workspace.onDidChangeTextDocument((doc) => {
+            const diagnostics = diagnosticCollection.get(doc.document.uri);
+            if (!diagnostics) {
+                return;
+            }
+
+            let newDiagnostics: vscode.Diagnostic[] = [];
+            diagnostics.forEach((diagnostic) => {
+                const hasOverlap = doc.contentChanges.some((change) => {
+                    return change.range.intersection(diagnostic.range) !== undefined || (change.range.isSingleLine && change.range.start.line === diagnostic.range.start.line);
+                });
+                if (!hasOverlap) {
+                    newDiagnostics.push(diagnostic);
+                }
+            });
+
+            if (newDiagnostics.length === 0 || newDiagnostics.length === diagnostics.length) {
+                return;
+            }
+            diagnosticCollection.set(doc.document.uri, newDiagnostics);
+        })
     );
 
     workspace.textDocuments.forEach((doc) => lintAndSetDiagnostics(doc));
