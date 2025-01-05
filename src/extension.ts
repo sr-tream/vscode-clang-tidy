@@ -171,8 +171,12 @@ export class ClangTidyInfo implements vscode.CodeActionProvider {
             diagnostics: [diagnostic],
             kind: CodeActionKind.QuickFix,
             edit: changes,
+            command: {
+                title: "Save File",
+                command: "workbench.action.files.save",
+            },
         };
     }
 }
 
-export function deactivate() {}
+export function deactivate() { }

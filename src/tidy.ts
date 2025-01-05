@@ -188,12 +188,27 @@ function generateVScodeDiagnostics(
 ): vscode.Diagnostic[] {
     const diagnosticMessage = tidyDiagnostic.DiagnosticMessage;
     if (diagnosticMessage.Replacements.length > 0) {
-        return diagnosticMessage.Replacements.map((replacement) => {
-            const beginPos = document.positionAt(replacement.Offset);
+        if (diagnosticMessage.Replacements[0].Length === 0) {
+            const beginPos = document.positionAt(diagnosticMessage.Replacements[0].Offset);
             const endPos = document.positionAt(
-                replacement.Offset + replacement.Length
+                diagnosticMessage.Replacements[diagnosticMessage.Replacements.length - 1].Offset + diagnosticMessage.Replacements[diagnosticMessage.Replacements.length - 1].Length
             );
 
+            let replacementLength = diagnosticMessage.Replacements[0].Length;
+            let replacementText = diagnosticMessage.Replacements[0].ReplacementText;
+            if (diagnosticMessage.Replacements.length > 1) {
+                for (let i = 0; i < diagnosticMessage.Replacements.length - 1; i++) {
+                    const beginText = document.positionAt(
+                        diagnosticMessage.Replacements[i].Offset + diagnosticMessage.Replacements[i].Length
+                    );
+                    const endText = document.positionAt(
+                        diagnosticMessage.Replacements[i + 1].Offset
+                    );
+                    const text = document.getText(new vscode.Range(beginText, endText));
+                    replacementText += text + diagnosticMessage.Replacements[i + 1].ReplacementText;
+                    replacementLength += text.length + diagnosticMessage.Replacements[i + 1].Length;
+                }
+            }
             let diagnostic = new vscode.Diagnostic(
                 new vscode.Range(beginPos, endPos),
                 diagnosticMessage.Message,
@@ -201,13 +216,33 @@ function generateVScodeDiagnostics(
             );
             // embed information needed for quickfix in code
             diagnostic.code = JSON.stringify([
-                replacement.ReplacementText,
-                replacement.Offset,
-                replacement.Length,
+                replacementText,
+                diagnosticMessage.Replacements[0].Offset,
+                replacementLength,
             ]);
             diagnostic.source = "clang-tidy";
-            return diagnostic;
-        });
+            return [diagnostic];
+        } else
+            return diagnosticMessage.Replacements.map((replacement) => {
+                const beginPos = document.positionAt(replacement.Offset);
+                const endPos = document.positionAt(
+                    replacement.Offset + replacement.Length
+                );
+
+                let diagnostic = new vscode.Diagnostic(
+                    new vscode.Range(beginPos, endPos),
+                    diagnosticMessage.Message,
+                    diagnosticMessage.Severity
+                );
+                // embed information needed for quickfix in code
+                diagnostic.code = JSON.stringify([
+                    replacement.ReplacementText,
+                    replacement.Offset,
+                    replacement.Length,
+                ]);
+                diagnostic.source = "clang-tidy";
+                return diagnostic;
+            });
     } else {
         const line = document.positionAt(diagnosticMessage.FileOffset).line;
         let diagnostic = new vscode.Diagnostic(
