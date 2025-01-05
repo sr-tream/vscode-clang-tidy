@@ -2,7 +2,7 @@
     "name": "clang-tidy-sr-team-fork",
     "displayName": "Clang-Tidy (fork)",
     "description": "Integrates clang-tidy into VS Code",
-    "version": "0.6.0",
+    "version": "0.7.0",
     "publisher": "SR-team",
     "repository": {
         "url": "https://github.com/sr-tream/vscode-clang-tidy"
@@ -85,6 +85,34 @@
                     ],
                     "default": "Notification",
                     "description": "Location of the progress bar"
+                },
+                "clang-tidy.severityOverrides": {
+                    "type": "array",
+                    "default": [],
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "ruleName": {
+                                "type": "string",
+                                "description": "The name of the clang-tidy rule."
+                            },
+                            "severity": {
+                                "type": "string",
+                                "enum": [
+                                    "Error",
+                                    "Warning",
+                                    "Info",
+                                    "Hint"
+                                ],
+                                "description": "The severity level to apply to the rule."
+                            }
+                        },
+                        "required": [
+                            "ruleName",
+                            "severity"
+                        ],
+                        "description": "Overrides for clang-tidy rule severities."
+                    }
                 }
             }
         }

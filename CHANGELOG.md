@@ -7,11 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2025-01-05
+
 ### Added
 
 -   Cross-file Quick Fixes for opened files
 -   Show diagnostic name
 -   Statusbar item for progress indication
+-   Severity override
 
 ## [0.6.0] - 2025-01-05
 
@@ -103,7 +106,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 -   Initial release
 
-[unreleased]: https://github.com/sr-tream/vscode-clang-tidy/compare/v0.6.0...HEAD
+[unreleased]: https://github.com/sr-tream/vscode-clang-tidy/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/sr-tream/vscode-clang-tidy/releases/tag/v0.7.0
 [0.6.0]: https://github.com/sr-tream/vscode-clang-tidy/releases/tag/v0.6.0
 [0.5.1]: https://github.com/notskm/vscode-clang-tidy/releases/tag/v0.5.1
 [0.5.0]: https://github.com/notskm/vscode-clang-tidy/releases/tag/v0.5.0

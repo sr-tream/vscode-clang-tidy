@@ -236,9 +236,44 @@ function tidyOutputAsObject(clangTidyOutput: string) {
 
     let diagnostics = structuredResults.Diagnostics;
 
+    interface SeverityOverride {
+        ruleName: string;
+        severity: SeverityLevel;
+    }
+
+    enum SeverityLevel {
+        Error = "Error",
+        Warning = "Warning",
+        Info = "Info",
+        Hint = "Hint",
+    }
+    const severityOverridesArray: SeverityOverride[] = vscode.workspace
+        .getConfiguration("clang-tidy")
+        .get<SeverityOverride[]>("severityOverrides", []);
+
+    // Convert the array to a Map for easier access
+    const severityOverridesMap = new Map(severityOverridesArray.map(({ ruleName, severity }) => [ruleName, severity]));
+
     const severities = collectDiagnosticSeverities(clangTidyOutput);
-    for (let i = 0; i < diagnostics.length || i < severities.length; i++) {
-        diagnostics[i].DiagnosticMessage.Severity = severities[i];
+    for (let i = 0; i < diagnostics.length; i++) {
+        const override = severityOverridesMap.get(diagnostics[i].DiagnosticName);
+        if (override !== undefined) {
+            switch (override) {
+                case SeverityLevel.Error:
+                    diagnostics[i].DiagnosticMessage.Severity = vscode.DiagnosticSeverity.Error;
+                    break;
+                case SeverityLevel.Warning:
+                    diagnostics[i].DiagnosticMessage.Severity = vscode.DiagnosticSeverity.Warning;
+                    break;
+                case SeverityLevel.Info:
+                    diagnostics[i].DiagnosticMessage.Severity = vscode.DiagnosticSeverity.Information;
+                    break;
+                case SeverityLevel.Hint:
+                    diagnostics[i].DiagnosticMessage.Severity = vscode.DiagnosticSeverity.Hint;
+                    break;
+            }
+        } else if (i < severities.length)
+            diagnostics[i].DiagnosticMessage.Severity = severities[i];
     }
 
     return structuredResults;
@@ -262,6 +297,7 @@ function generateVScodeDiagnostics(
     tidyDiagnostic: ClangTidyDiagnostic
 ): vscode.Diagnostic[] {
     const diagnosticMessage = tidyDiagnostic.DiagnosticMessage;
+    const isHint = diagnosticMessage.Severity === vscode.DiagnosticSeverity.Hint;
     const fixes = diagnosticMessage.Replacements.filter((replacement) => replacement.FilePath === diagnosticMessage.FilePath || findOpenedTextDocument(replacement.FilePath) !== undefined);
     if (fixes.length > 0) {
         if (fixes[0].Length === 0) {
@@ -289,8 +325,8 @@ function generateVScodeDiagnostics(
 
             let range: vscode.Range;
             if (fixes[0].FilePath !== document.fileName) {
-                const line = document.positionAt(diagnosticMessage.FileOffset).line;
-                range = new vscode.Range(line, 0, line, Number.MAX_VALUE)
+                const pos = document.positionAt(diagnosticMessage.FileOffset);
+                range = new vscode.Range(pos.line, isHint ? pos.character : 0, pos.line, Number.MAX_VALUE)
             } else
                 range = new vscode.Range(beginPos, endPos);
 
@@ -322,8 +358,8 @@ function generateVScodeDiagnostics(
 
                 let range: vscode.Range;
                 if (fixes[0].FilePath !== document.fileName) {
-                    const line = document.positionAt(diagnosticMessage.FileOffset).line;
-                    range = new vscode.Range(line, 0, line, Number.MAX_VALUE)
+                    const pos = document.positionAt(diagnosticMessage.FileOffset);
+                    range = new vscode.Range(pos.line, isHint ? pos.character : 0, pos.line, Number.MAX_VALUE)
                 } else
                     range = new vscode.Range(beginPos, endPos);
 
@@ -346,9 +382,9 @@ function generateVScodeDiagnostics(
                 return diagnostic;
             });
     } else {
-        const line = document.positionAt(diagnosticMessage.FileOffset).line;
+        const pos = document.positionAt(diagnosticMessage.FileOffset);
         let diagnostic = new vscode.Diagnostic(
-            new vscode.Range(line, 0, line, Number.MAX_VALUE),
+            new vscode.Range(pos.line, isHint ? pos.character : 0, pos.line, Number.MAX_VALUE),
             diagnosticMessage.Message,
             diagnosticMessage.Severity
         );
