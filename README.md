@@ -10,6 +10,8 @@ This extension integrates [clang-tidy](https://clang.llvm.org/extra/clang-tidy/)
 
 - Fix work on big files, like 10k lines
 - Fix quick-actions with insertions around original text
+- Fix abort linting
+- Disable cross-file quick-actions (it's require to open file in VSCode)
 - Unpublish diagnostics, when overlapped code edited
 - Save file after quick-actions (workaround for editing invalid position in followed quick-actions)
 - Configurable progress bar location

@@ -35,13 +35,19 @@ export function activate(context: vscode.ExtensionContext) {
             loggingChannel,
             fixErrors
         );
-        diagnosticCollection.set(file.uri, diagnostics);
+        if (diagnostics.length === 0)
+            diagnosticCollection.delete(file.uri);
+        else
+            diagnosticCollection.set(file.uri, diagnostics);
     }
 
     async function lintActiveDocAndSetDiagnostics() {
         const diag = await lintActiveTextDocument(loggingChannel);
         if (diag.document) {
-            diagnosticCollection.set(diag.document.uri, diag.diagnostics);
+            if (diag.diagnostics.length === 0)
+                diagnosticCollection.delete(diag.document.uri);
+            else
+                diagnosticCollection.set(diag.document.uri, diag.diagnostics);
         }
     }
 
@@ -52,9 +58,8 @@ export function activate(context: vscode.ExtensionContext) {
                     doc.uri.scheme === "file" &&
                     doc.uri.fsPath.endsWith(".clang-tidy")
                 ) {
-                    workspace.textDocuments.forEach((doc) =>
-                        lintAndSetDiagnostics(doc)
-                    );
+                    diagnosticCollection.clear();
+                    lintActiveDocAndSetDiagnostics();
                 } else {
                     const fixErrors = workspace
                         .getConfiguration("clang-tidy")
@@ -64,7 +69,6 @@ export function activate(context: vscode.ExtensionContext) {
             }
         })
     );
-    subscriptions.push(workspace.onDidOpenTextDocument(lintAndSetDiagnostics));
     subscriptions.push(
         workspace.onDidCloseTextDocument((doc) =>
             diagnosticCollection.delete(doc.uri)
@@ -76,9 +80,8 @@ export function activate(context: vscode.ExtensionContext) {
     subscriptions.push(
         workspace.onDidChangeConfiguration((config) => {
             if (config.affectsConfiguration("clang-tidy")) {
-                workspace.textDocuments.forEach((doc) =>
-                    lintAndSetDiagnostics(doc)
-                );
+                diagnosticCollection.clear();
+                lintActiveDocAndSetDiagnostics();
             }
         })
     );
@@ -114,9 +117,15 @@ export function activate(context: vscode.ExtensionContext) {
         })
     );
 
-    setTimeout(() => {
-        workspace.textDocuments.forEach((doc) => lintAndSetDiagnostics(doc));
-    }, 1000);
+    subscriptions.push(
+        vscode.window.onDidChangeActiveTextEditor((editor) => {
+            if (editor && !diagnosticCollection.has(editor.document.uri)) {
+                lintActiveDocAndSetDiagnostics();
+            }
+        })
+    );
+
+    lintActiveDocAndSetDiagnostics();
 }
 
 /**
