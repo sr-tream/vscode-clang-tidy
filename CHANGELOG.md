@@ -101,7 +101,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 -   Initial release
 
-[unreleased]: https://github.com/notskm/vscode-clang-tidy/compare/v0.5.1...HEAD
+[unreleased]: https://github.com/sr-tream/vscode-clang-tidy/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/sr-tream/vscode-clang-tidy/releases/tag/v0.6.0
 [0.5.1]: https://github.com/notskm/vscode-clang-tidy/releases/tag/v0.5.1
 [0.5.0]: https://github.com/notskm/vscode-clang-tidy/releases/tag/v0.5.0
 [0.4.1]: https://github.com/notskm/vscode-clang-tidy/releases/tag/v0.4.1
