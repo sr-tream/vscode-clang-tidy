@@ -5,7 +5,7 @@ import { ClangTidyReplacement } from "./clang-tidy-yaml";
 
 import { lintTextDocument, lintActiveTextDocument } from "./lint";
 
-import { killClangTidy } from "./tidy";
+import { killClangTidy, findOpenedTextDocument } from "./tidy";
 
 export function activate(context: vscode.ExtensionContext) {
     let subscriptions = context.subscriptions;
@@ -110,10 +110,10 @@ export function activate(context: vscode.ExtensionContext) {
                 }
             });
 
-            if (newDiagnostics.length === 0 || newDiagnostics.length === diagnostics.length) {
-                return;
-            }
-            diagnosticCollection.set(doc.document.uri, newDiagnostics);
+            if (newDiagnostics.length === 0)
+                diagnosticCollection.delete(doc.document.uri);
+            else if (newDiagnostics.length !== diagnostics.length)
+                diagnosticCollection.set(doc.document.uri, newDiagnostics);
         })
     );
 
@@ -123,6 +123,42 @@ export function activate(context: vscode.ExtensionContext) {
                 lintActiveDocAndSetDiagnostics();
             }
         })
+    );
+
+    subscriptions.push(
+        commands.registerCommand(
+            "clang-tidy.landFixes",
+            (document?: vscode.TextDocument, range?: vscode.Range) => {
+                if (!document) return;
+
+                vscode.commands.executeCommand("workbench.action.files.saveFiles", document.uri);
+
+                if (vscode.window.activeTextEditor && document !== vscode.window.activeTextEditor.document) {
+                    const activeDoc = vscode.window.activeTextEditor.document;
+                    const diagnostics = diagnosticCollection.get(activeDoc.uri);
+                    if (!diagnostics)
+                        return;
+
+                    if (range) {
+                        let newDiagnostics: vscode.Diagnostic[] = [];
+                        diagnostics.forEach((diagnostic) => {
+                            const hasOverlap = range.intersection(diagnostic.range) !== undefined || (range.isSingleLine && range.start.line === diagnostic.range.start.line);
+                            if (!hasOverlap) {
+                                newDiagnostics.push(diagnostic);
+                            }
+                        });
+                        if (newDiagnostics.length === 0)
+                            diagnosticCollection.delete(activeDoc.uri);
+                        else if (newDiagnostics.length !== diagnostics.length)
+                            diagnosticCollection.set(activeDoc.uri, newDiagnostics);
+                    }
+
+                    setTimeout(() => {
+                        lintActiveDocAndSetDiagnostics();
+                    }, 250);
+                }
+            }
+        )
     );
 
     lintActiveDocAndSetDiagnostics();
@@ -163,17 +199,21 @@ export class ClangTidyInfo implements vscode.CodeActionProvider {
         ) {
             return null;
         }
-        const [text, offset, len] = JSON.parse(diagnostic.code) as [
+        const [text, offset, len, file] = JSON.parse(diagnostic.code) as [
             string,
             number,
-            number
+            number,
+            string | undefined
         ];
+        const doc = file !== undefined ? findOpenedTextDocument(file) : document;
+        if (doc === undefined) return null;
+
         const changes = new vscode.WorkspaceEdit();
         changes.replace(
-            document.uri,
+            doc.uri,
             new vscode.Range(
-                document.positionAt(offset),
-                document.positionAt(offset + len)
+                doc.positionAt(offset),
+                doc.positionAt(offset + len)
             ),
             text
         );
@@ -183,8 +223,9 @@ export class ClangTidyInfo implements vscode.CodeActionProvider {
             kind: CodeActionKind.QuickFix,
             edit: changes,
             command: {
-                title: "Save File",
-                command: "workbench.action.files.save",
+                title: "Save File and reanalize",
+                command: "clang-tidy.landFixes",
+                arguments: [doc, diagnostic.range],
             },
         };
     }

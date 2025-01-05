@@ -208,16 +208,30 @@ function tidyOutputAsObject(clangTidyOutput: string) {
     return structuredResults;
 }
 
+export function findOpenedTextDocument(filePath: string): vscode.TextDocument | undefined {
+    // Check if the file is open (not necessarily visible)
+    const openedTextDocument = vscode.workspace.textDocuments.find(document => document.uri.fsPath === filePath);
+
+    // If the document is found among open documents, return it
+    if (openedTextDocument) {
+        return openedTextDocument;
+    }
+
+    // If not found, the document is not opened
+    return undefined;
+}
+
 function generateVScodeDiagnostics(
     document: vscode.TextDocument,
     tidyDiagnostic: ClangTidyDiagnostic
 ): vscode.Diagnostic[] {
     const diagnosticMessage = tidyDiagnostic.DiagnosticMessage;
-    const fixes = diagnosticMessage.Replacements.filter((replacement) => replacement.FilePath === diagnosticMessage.FilePath);
+    const fixes = diagnosticMessage.Replacements.filter((replacement) => replacement.FilePath === diagnosticMessage.FilePath || findOpenedTextDocument(replacement.FilePath) !== undefined);
     if (fixes.length > 0) {
         if (fixes[0].Length === 0) {
-            const beginPos = document.positionAt(fixes[0].Offset);
-            const endPos = document.positionAt(
+            const doc = fixes[0].FilePath !== document.fileName ? findOpenedTextDocument(fixes[0].FilePath) as vscode.TextDocument : document;
+            const beginPos = doc.positionAt(fixes[0].Offset);
+            const endPos = doc.positionAt(
                 fixes[fixes.length - 1].Offset + fixes[fixes.length - 1].Length
             );
 
@@ -225,20 +239,27 @@ function generateVScodeDiagnostics(
             let replacementText = fixes[0].ReplacementText;
             if (fixes.length > 1) {
                 for (let i = 0; i < fixes.length - 1; i++) {
-                    const beginText = document.positionAt(
+                    const beginText = doc.positionAt(
                         fixes[i].Offset + fixes[i].Length
                     );
-                    const endText = document.positionAt(
+                    const endText = doc.positionAt(
                         fixes[i + 1].Offset
                     );
-                    const text = document.getText(new vscode.Range(beginText, endText));
+                    const text = doc.getText(new vscode.Range(beginText, endText));
                     replacementText += text + fixes[i + 1].ReplacementText;
                     replacementLength += text.length + fixes[i + 1].Length;
                 }
             }
 
+            let range: vscode.Range;
+            if (fixes[0].FilePath !== document.fileName) {
+                const line = document.positionAt(diagnosticMessage.FileOffset).line;
+                range = new vscode.Range(line, 0, line, Number.MAX_VALUE)
+            } else
+                range = new vscode.Range(beginPos, endPos);
+
             let diagnostic = new vscode.Diagnostic(
-                new vscode.Range(beginPos, endPos),
+                range,
                 diagnosticMessage.Message,
                 diagnosticMessage.Severity
             );
@@ -246,19 +267,29 @@ function generateVScodeDiagnostics(
             diagnostic.code = JSON.stringify([
                 replacementText,
                 fixes[0].Offset,
-                replacementLength
+                replacementLength,
+                fixes[0].FilePath
             ]);
             diagnostic.source = "clang-tidy";
             return [diagnostic];
         } else
             return fixes.map((replacement) => {
-                const beginPos = document.positionAt(replacement.Offset);
-                const endPos = document.positionAt(
+                const doc = fixes[0].FilePath !== document.fileName ? findOpenedTextDocument(fixes[0].FilePath) as vscode.TextDocument : document;
+
+                const beginPos = doc.positionAt(replacement.Offset);
+                const endPos = doc.positionAt(
                     replacement.Offset + replacement.Length
                 );
 
+                let range: vscode.Range;
+                if (fixes[0].FilePath !== document.fileName) {
+                    const line = document.positionAt(diagnosticMessage.FileOffset).line;
+                    range = new vscode.Range(line, 0, line, Number.MAX_VALUE)
+                } else
+                    range = new vscode.Range(beginPos, endPos);
+
                 let diagnostic = new vscode.Diagnostic(
-                    new vscode.Range(beginPos, endPos),
+                    range,
                     diagnosticMessage.Message,
                     diagnosticMessage.Severity
                 );
@@ -266,7 +297,8 @@ function generateVScodeDiagnostics(
                 diagnostic.code = JSON.stringify([
                     replacement.ReplacementText,
                     replacement.Offset,
-                    replacement.Length
+                    replacement.Length,
+                    replacement.FilePath
                 ]);
                 diagnostic.source = "clang-tidy";
                 return diagnostic;
